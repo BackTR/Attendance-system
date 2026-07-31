@@ -1,5 +1,4 @@
 from datetime import date
-from datetime import datetime
 from datetime import time
 
 from sqlalchemy import Date
@@ -7,7 +6,6 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Time
-from sqlalchemy import DateTime
 
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -17,6 +15,7 @@ from models.base import Base
 
 
 class AttendanceModel(Base):
+    """Represents a single daily attendance record for an employee."""
 
     __tablename__ = "attendance"
 
@@ -56,11 +55,6 @@ class AttendanceModel(Base):
     menit_pulang_cepat: Mapped[int] = mapped_column(
         Integer,
         default=0
-    )
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow
     )
 
     employee = relationship("EmployeeModel")

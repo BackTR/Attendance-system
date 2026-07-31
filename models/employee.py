@@ -1,7 +1,4 @@
-from datetime import datetime
-
 from sqlalchemy import Boolean
-from sqlalchemy import DateTime
 from sqlalchemy import Integer
 from sqlalchemy import String
 
@@ -12,6 +9,7 @@ from models.base import Base
 
 
 class EmployeeModel(Base):
+    """Represents an employee record in the database."""
 
     __tablename__ = "employees"
 
@@ -39,15 +37,4 @@ class EmployeeModel(Base):
     aktif: Mapped[bool] = mapped_column(
         Boolean,
         default=True
-    )
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow
-    )
-
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow
     )
