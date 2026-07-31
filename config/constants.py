@@ -1,15 +1,18 @@
-WORK_START_TIME = "07:30"
+"""Default fallback constants for AIS.
 
-WORK_END_TIME = "15:30"
+IMPORTANT: These values are ONLY used to seed the `settings` table on
+first run (see models/app_settings.py + services/settings_service.py).
+Business logic (Service layer) must always read working hours from the
+database via SettingsService, never hardcode them again (AI_RULES Rule 9).
+"""
 
-FRIDAY_END_TIME = "13:00"
+from datetime import time
 
-MONDAY = "Senin"
+DEFAULT_WORK_START_TIME: time = time(7, 30)
+DEFAULT_WORK_END_TIME: time = time(15, 30)
+DEFAULT_FRIDAY_END_TIME: time = time(13, 0)
 
-TUESDAY = "Selasa"
+DEFAULT_TOLERANCE_LATE_MINUTES: int = 0
+DEFAULT_TOLERANCE_LEAVE_MINUTES: int = 0
 
-WEDNESDAY = "Rabu"
-
-THURSDAY = "Kamis"
-
-FRIDAY = "Jumat"
+FRIDAY_WEEKDAY_INDEX: int = 4  # Monday=0 ... Sunday=6
