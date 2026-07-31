@@ -1,0 +1,66 @@
+from datetime import date
+from datetime import datetime
+from datetime import time
+
+from sqlalchemy import Date
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy import Time
+from sqlalchemy import DateTime
+
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import relationship
+
+from models.base import Base
+
+
+class AttendanceModel(Base):
+
+    __tablename__ = "attendance"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id")
+    )
+
+    tanggal: Mapped[date] = mapped_column(Date)
+
+    hari: Mapped[str] = mapped_column(String(20))
+
+    jam_masuk: Mapped[time] = mapped_column(
+        Time,
+        nullable=True
+    )
+
+    jam_keluar: Mapped[time] = mapped_column(
+        Time,
+        nullable=True
+    )
+
+    status_masuk: Mapped[str] = mapped_column(
+        String(30)
+    )
+
+    status_keluar: Mapped[str] = mapped_column(
+        String(30)
+    )
+
+    menit_telat: Mapped[int] = mapped_column(
+        Integer,
+        default=0
+    )
+
+    menit_pulang_cepat: Mapped[int] = mapped_column(
+        Integer,
+        default=0
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow
+    )
+
+    employee = relationship("EmployeeModel")

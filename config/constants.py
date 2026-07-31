@@ -1,0 +1,15 @@
+WORK_START_TIME = "07:30"
+
+WORK_END_TIME = "15:30"
+
+FRIDAY_END_TIME = "13:00"
+
+MONDAY = "Senin"
+
+TUESDAY = "Selasa"
+
+WEDNESDAY = "Rabu"
+
+THURSDAY = "Kamis"
+
+FRIDAY = "Jumat"
