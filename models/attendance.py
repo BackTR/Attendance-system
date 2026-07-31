@@ -40,11 +40,13 @@ class AttendanceModel(Base):
     )
 
     status_masuk: Mapped[str] = mapped_column(
-        String(30)
+        String(30),
+        nullable=True
     )
 
     status_keluar: Mapped[str] = mapped_column(
-        String(30)
+        String(30),
+        nullable=True
     )
 
     menit_telat: Mapped[int] = mapped_column(
@@ -55,6 +57,10 @@ class AttendanceModel(Base):
     menit_pulang_cepat: Mapped[int] = mapped_column(
         Integer,
         default=0
+    )
+
+    sumber_data: Mapped[str] = mapped_column(
+        String(30)
     )
 
     employee = relationship("EmployeeModel")
