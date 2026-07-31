@@ -28,6 +28,31 @@ SessionLocal = sessionmaker(
 )
 
 
+def init_db() -> None:
+    """Register all models and create tables if they don't exist yet.
+
+    This MUST import every model (even ones not used directly here) so:
+    1. SQLAlchemy's mapper registry can resolve string-based relationship()
+       references like AttendanceModel.employee = relationship("EmployeeModel").
+    2. Base.metadata knows about every table before create_all() runs.
+
+    TEMPORARY: PROJECT_CONTEXT.md lists Alembic as the migration tool.
+    This create_all() approach is a stand-in until Alembic migrations
+    are wired up (planned) — it only creates missing tables, it never
+    alters existing ones.
+
+    Called automatically at the bottom of this module, so importing
+    core.database from ANY page/service (not just app.py) is enough to
+    guarantee tables exist and models are registered.
+    """
+    from models.base import Base
+    from models.employee import EmployeeModel  # noqa: F401
+    from models.attendance import AttendanceModel  # noqa: F401
+    from models.app_settings import AppSettingsModel  # noqa: F401
+
+    Base.metadata.create_all(engine)
+
+
 @contextmanager
 def get_session() -> Generator[Session, None, None]:
     """Provide a transactional database session.
@@ -52,3 +77,6 @@ def get_session() -> Generator[Session, None, None]:
         raise
     finally:
         session.close()
+
+
+init_db()
