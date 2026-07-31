@@ -63,4 +63,9 @@ class AttendanceModel(Base):
         String(30)
     )
 
+    durasi_kerja: Mapped[int] = mapped_column(
+        Integer,
+        nullable=True
+    )
+
     employee = relationship("EmployeeModel")

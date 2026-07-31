@@ -41,6 +41,17 @@ class AttendanceRepository:
             AttendanceModel.tanggal.between(start_date, end_date)
         )
         return list(self.session.execute(stmt).scalars().all())
+    
+    def get_unanalyzed(self) -> list[AttendanceModel]:
+        """Fetch attendance records that have not yet been analyzed.
+
+        A record is considered unanalyzed if status_masuk is still NULL
+        (set by ExcelImportService, filled in later by AttendanceService).
+        """
+        stmt = select(AttendanceModel).where(
+            AttendanceModel.status_masuk.is_(None)
+        )
+        return list(self.session.execute(stmt).scalars().all())
 
     def update(self, attendance: AttendanceModel) -> AttendanceModel:
         """Persist changes made to an existing attendance record."""
