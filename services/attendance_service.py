@@ -16,7 +16,8 @@ from models.attendance import AttendanceModel
 from repositories.attendance_repository import AttendanceRepository
 from repositories.settings_repository import SettingsRepository
 
-
+#const
+_TIME_DIFF_ANCHOR_DATE = date(2000, 1, 1)
 class AttendanceService:
     """Calculates lateness, early leave, and work duration for attendance records."""
 
@@ -161,6 +162,7 @@ class AttendanceService:
     @staticmethod
     def _time_diff_minutes(later: time, earlier: time) -> int:
         """Return the (possibly negative) minute difference: later - earlier."""
-        today = date.today()
-        delta = datetime.combine(today, later) - datetime.combine(today, earlier)
+        delta = datetime.combine(_TIME_DIFF_ANCHOR_DATE, later) - datetime.combine(
+            _TIME_DIFF_ANCHOR_DATE, earlier
+        )
         return int(delta.total_seconds() // 60)
