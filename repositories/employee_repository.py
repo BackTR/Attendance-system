@@ -26,6 +26,11 @@ class EmployeeRepository:
         )
         return self.session.execute(stmt).scalar_one_or_none()
 
+    def get_all(self) -> list[EmployeeModel]:
+        """Fetch every employee, regardless of active status."""
+        stmt = select(EmployeeModel).order_by(EmployeeModel.nama)
+        return list(self.session.execute(stmt).scalars().all())
+
     def get_all_active(self) -> list[EmployeeModel]:
         """Fetch all active employees."""
         stmt = select(EmployeeModel).where(EmployeeModel.aktif.is_(True))

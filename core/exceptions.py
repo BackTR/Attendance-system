@@ -18,3 +18,6 @@ class EmployeeNotFoundException(AISException):
 
 class InvalidSettingsException(AISException):
     """Raised when submitted working-hour settings fail validation."""
+
+class EmployeeAlreadyExistsException(AISException):
+    """Raised when creating an employee with a duplicate employee_code."""
