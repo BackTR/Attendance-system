@@ -23,3 +23,6 @@ EXCEL_REQUIRED_COLUMNS: tuple[str, ...] = (
     "jam_masuk",
     "jam_keluar",
 )
+
+MAX_UPLOAD_SIZE_MB: int = 10
+ALLOWED_EXCEL_EXTENSIONS: tuple[str, ...] = (".xlsx", ".xls")
