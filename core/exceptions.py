@@ -15,3 +15,6 @@ class InvalidExcelFormatException(AISException):
 
 class EmployeeNotFoundException(AISException):
     """Raised when an employee record cannot be found."""
+
+class InvalidSettingsException(AISException):
+    """Raised when submitted working-hour settings fail validation."""
