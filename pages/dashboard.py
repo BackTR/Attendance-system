@@ -14,6 +14,7 @@ from core.database import get_session
 from repositories.attendance_repository import AttendanceRepository
 from repositories.employee_repository import EmployeeRepository
 from services.dashboard_service import DashboardService
+from utils.datetime_helper import today
 
 st.set_page_config(page_title="Dashboard - AIS", layout="wide")
 st.title("📊 Dashboard Absensi")
@@ -21,9 +22,9 @@ st.title("📊 Dashboard Absensi")
 # --- Input: date range (UI only) ---
 col1, col2 = st.columns(2)
 with col1:
-    start_date = st.date_input("Dari tanggal", value=date.today() - timedelta(days=30))
+    start_date = st.date_input("Dari tanggal", value=today() - timedelta(days=30))
 with col2:
-    end_date = st.date_input("Sampai tanggal", value=date.today())
+    end_date = st.date_input("Sampai tanggal", value=today())
 
 if start_date > end_date:
     st.error("Tanggal awal tidak boleh lebih besar dari tanggal akhir.")

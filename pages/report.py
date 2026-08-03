@@ -12,6 +12,7 @@ from core.database import get_session
 from repositories.attendance_repository import AttendanceRepository
 from repositories.employee_repository import EmployeeRepository
 from services.report_service import ReportService
+from utils.datetime_helper import today
 
 st.set_page_config(page_title="Laporan - AIS", layout="wide")
 st.title("🧾 Laporan Absensi")
@@ -20,10 +21,10 @@ st.title("🧾 Laporan Absensi")
 col1, col2 = st.columns(2)
 with col1:
     start_date = st.date_input(
-        "Dari tanggal", value=date.today() - timedelta(days=30), key="report_start"
+        "Dari tanggal", value=today() - timedelta(days=30), key="report_start"
     )
 with col2:
-    end_date = st.date_input("Sampai tanggal", value=date.today(), key="report_end")
+    end_date = st.date_input("Sampai tanggal", value=today(), key="report_end")
 
 if start_date > end_date:
     st.error("Tanggal awal tidak boleh lebih besar dari tanggal akhir.")

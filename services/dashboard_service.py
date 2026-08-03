@@ -5,7 +5,7 @@ business logic, not something the Dashboard page computes itself).
 The Dashboard page only calls this Service and renders the result.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date
 
 from core.enums.attendance import CheckInStatus, CheckOutStatus
