@@ -22,8 +22,12 @@ class EmployeeRepository:
     def get_by_code(self, employee_code: str) -> EmployeeModel | None:
         """Fetch an employee by their unique employee_code."""
         stmt = select(EmployeeModel).where(
-            EmployeeModel.employee_code == employee_code
-        )
+            EmployeeModel.employee_code == employee_code)
+        return self.session.execute(stmt).scalar_one_or_none()
+
+    def get_by_name(self, nama: str) -> EmployeeModel | None:
+        """Fetch an employee by exact name match."""
+        stmt = select(EmployeeModel).where(EmployeeModel.nama == nama)
         return self.session.execute(stmt).scalar_one_or_none()
 
     def get_all(self) -> list[EmployeeModel]:
