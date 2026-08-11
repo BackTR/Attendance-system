@@ -21,3 +21,6 @@ class InvalidSettingsException(AISException):
 
 class EmployeeAlreadyExistsException(AISException):
     """Raised when creating an employee with a duplicate employee_code."""
+
+class DuplicateHolidayException(AISException):
+    """Raised when declaring a holiday on a date that's already declared."""

@@ -16,6 +16,7 @@ DEFAULT_TOLERANCE_LATE_MINUTES: int = 0
 DEFAULT_TOLERANCE_LEAVE_MINUTES: int = 0
 
 FRIDAY_WEEKDAY_INDEX: int = 4  # Monday=0 ... Sunday=6
+WEEKEND_WEEKDAY_INDEXES: tuple[int, ...] = (5, 6)  # Saturday, Sunday
 
 EXCEL_REQUIRED_COLUMNS: tuple[str, ...] = (
     "employee_code",
