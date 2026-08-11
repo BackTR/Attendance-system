@@ -45,12 +45,20 @@ class AttendanceRepository:
     def get_unanalyzed(self) -> list[AttendanceModel]:
         """Fetch attendance records that have not yet been analyzed.
 
-        A record is considered unanalyzed if status_masuk is still NULL
-        (set by ExcelImportService, filled in later by AttendanceService).
+        A record is considered unanalyzed if status_hari is still NULL
+        (set by ExcelImportService/RawScanImportService, filled in later
+        by AttendanceService). status_hari (not status_masuk) is used
+        because on holidays status_masuk intentionally stays NULL even
+        after analysis.
         """
         stmt = select(AttendanceModel).where(
-            AttendanceModel.status_masuk.is_(None)
+            AttendanceModel.status_hari.is_(None)
         )
+        return list(self.session.execute(stmt).scalars().all())
+
+    def get_all(self) -> list[AttendanceModel]:
+        """Fetch every attendance record (used for full re-analysis)."""
+        stmt = select(AttendanceModel)
         return list(self.session.execute(stmt).scalars().all())
 
     def update(self, attendance: AttendanceModel) -> AttendanceModel:

@@ -12,6 +12,12 @@ early-leave status — that is business logic owned by the Attendance
 Analyzer service (Sprint 5), per AI_RULES.md Rule 4.
 """
 
+from dataclasses import dataclass, field
+from datetime import date, datetime, time
+
+import pandas as pd
+from sqlalchemy.orm import Session
+
 from config.constants import EXCEL_REQUIRED_COLUMNS
 from core.enums.weekday import Weekday
 from core.exceptions import InvalidExcelFormatException

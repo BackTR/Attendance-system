@@ -23,7 +23,8 @@ class CheckOutStatus(str, Enum):
 
 class AttendanceStatus(str, Enum):
     """
-    Status kehadiran harian.
+    Status kehadiran harian (ringkasan level tinggi, terpisah dari detail
+    telat/pulang cepat di CheckInStatus/CheckOutStatus).
     """
 
     PRESENT = "PRESENT"
@@ -31,3 +32,7 @@ class AttendanceStatus(str, Enum):
     ABSENT = "ABSENT"
 
     INCOMPLETE = "INCOMPLETE"
+
+    LIBUR = "LIBUR"
+
+    LEMBUR = "LEMBUR"

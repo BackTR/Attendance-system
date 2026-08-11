@@ -19,6 +19,7 @@ from config.settings import UPLOAD_DIR
 from core.database import get_session
 from core.exceptions import InvalidExcelFormatException
 from repositories.attendance_repository import AttendanceRepository
+from repositories.holiday_repository import HolidayRepository
 from repositories.settings_repository import SettingsRepository
 from services.attendance_service import AttendanceService
 from services.parser import ExcelImportService, RawScanImportService
@@ -76,7 +77,9 @@ if uploaded_file is not None:
 
                 with get_session() as session:
                     analyzed_count = AttendanceService(
-                        AttendanceRepository(session), SettingsRepository(session)
+                        AttendanceRepository(session),
+                        SettingsRepository(session),
+                        HolidayRepository(session),
                     ).analyze_pending()
 
                 st.success(
@@ -107,7 +110,9 @@ if uploaded_file is not None:
 
                 with get_session() as session:
                     analyzed_count = AttendanceService(
-                        AttendanceRepository(session), SettingsRepository(session)
+                        AttendanceRepository(session),
+                        SettingsRepository(session),
+                        HolidayRepository(session),
                     ).analyze_pending()
 
                 st.success(

@@ -4,36 +4,54 @@ Owns ALL business rules for lateness, early leave, work duration, and
 daily attendance status, per PROJECT_CONTEXT.md Section 9. Repositories
 only fetch/persist data; this Service decides what the numbers mean
 (AI_RULES.md Rule 4: business logic only lives in Service).
+
+Day-status model (status_hari): every attendance record gets exactly
+one high-level label so reports don't require manual cross-checking:
+  - PRESENT    : work day, employee attended (may still be late/early)
+  - ABSENT     : work day, no check-in and no check-out at all
+  - INCOMPLETE : work day, only one of check-in/check-out recorded
+  - LIBUR      : weekend or declared holiday, employee did not attend
+  - LEMBUR     : weekend or declared holiday, employee DID attend
+    (no lateness/early-leave penalty applies, since there's no official
+    schedule on a day off)
 """
 
 from datetime import date, datetime, time
 
-from config.constants import FRIDAY_WEEKDAY_INDEX
-from core.enums.attendance import CheckInStatus, CheckOutStatus
+from config.constants import FRIDAY_WEEKDAY_INDEX, WEEKEND_WEEKDAY_INDEXES
+from core.enums.attendance import AttendanceStatus, CheckInStatus, CheckOutStatus
 from core.logger import logger
 from models.app_settings import AppSettingsModel
 from models.attendance import AttendanceModel
 from repositories.attendance_repository import AttendanceRepository
+from repositories.holiday_repository import HolidayRepository
 from repositories.settings_repository import SettingsRepository
 
-#const
 _TIME_DIFF_ANCHOR_DATE = date(2000, 1, 1)
+
+
 class AttendanceService:
-    """Calculates lateness, early leave, and work duration for attendance records."""
+    """Calculates lateness, early leave, work duration, and day status."""
 
     def __init__(
         self,
         attendance_repo: AttendanceRepository,
         settings_repo: SettingsRepository,
+        holiday_repo: HolidayRepository | None = None,
     ) -> None:
         """Initialize the service with required repositories.
 
         Args:
             attendance_repo: Repository for reading/writing attendance rows.
             settings_repo: Repository for reading working-hour settings.
+            holiday_repo: Repository for reading declared holidays. Only
+                needed for analyze_pending()/reanalyze_all(); the pure
+                calculate_* methods don't use it, so it may be omitted
+                (e.g. in unit tests) when analysis isn't being run.
         """
         self.attendance_repo = attendance_repo
         self.settings_repo = settings_repo
+        self.holiday_repo = holiday_repo
 
     def analyze_pending(self) -> int:
         """Analyze every attendance record that hasn't been analyzed yet.
@@ -41,19 +59,87 @@ class AttendanceService:
         Returns:
             Number of records analyzed.
         """
-        settings = self._get_or_create_settings()
         pending = self.attendance_repo.get_unanalyzed()
+        return self._analyze_records(pending, log_label="dianalisis")
 
-        for attendance in pending:
-            self._analyze_one(attendance, settings)
+    def reanalyze_all(self) -> int:
+        """Force re-analysis of every attendance record.
 
-        logger.info(f"{len(pending)} data absensi berhasil dianalisis")
-        return len(pending)
+        Use this after declaring/removing holidays or changing working-hour
+        settings, since analyze_pending() only touches never-analyzed rows.
+
+        Returns:
+            Number of records re-analyzed.
+        """
+        all_records = self.attendance_repo.get_all()
+        return self._analyze_records(all_records, log_label="dianalisis ulang")
+
+    def _analyze_records(
+        self, records: list[AttendanceModel], log_label: str
+    ) -> int:
+        """Shared analysis loop used by both analyze_pending and reanalyze_all."""
+        if not records:
+            return 0
+
+        settings = self._get_or_create_settings()
+        holiday_dates = self._get_holiday_dates(records)
+
+        for attendance in records:
+            self._analyze_one(attendance, settings, holiday_dates)
+
+        logger.info(f"{len(records)} data absensi berhasil {log_label}")
+        return len(records)
 
     def _analyze_one(
-        self, attendance: AttendanceModel, settings: AppSettingsModel
+        self,
+        attendance: AttendanceModel,
+        settings: AppSettingsModel,
+        holiday_dates: set[date],
     ) -> AttendanceModel:
-        """Calculate and store lateness/early-leave/duration for one record."""
+        """Calculate and store status/lateness/duration for one record."""
+        has_data = attendance.jam_masuk is not None or attendance.jam_keluar is not None
+        is_libur = self._is_libur(attendance.tanggal, holiday_dates)
+
+        if is_libur:
+            self._apply_libur_or_lembur(attendance, has_data)
+        elif not has_data:
+            self._apply_absent(attendance)
+        else:
+            self._apply_present(attendance, settings)
+
+        return self.attendance_repo.update(attendance)
+
+    def _apply_libur_or_lembur(
+        self, attendance: AttendanceModel, has_data: bool
+    ) -> None:
+        """Mark a weekend/holiday record as LIBUR (no attendance) or LEMBUR."""
+        attendance.status_masuk = None
+        attendance.status_keluar = None
+        attendance.menit_telat = 0
+        attendance.menit_pulang_cepat = 0
+
+        if has_data:
+            attendance.status_hari = AttendanceStatus.LEMBUR.value
+            attendance.durasi_kerja = self.calculate_work_duration(
+                attendance.jam_masuk, attendance.jam_keluar
+            )
+        else:
+            attendance.status_hari = AttendanceStatus.LIBUR.value
+            attendance.durasi_kerja = None
+
+    def _apply_absent(self, attendance: AttendanceModel) -> None:
+        """Mark a work-day record with no check-in/out at all as ABSENT."""
+        attendance.status_hari = AttendanceStatus.ABSENT.value
+        attendance.status_masuk = CheckInStatus.MISSING.value
+        attendance.status_keluar = CheckOutStatus.MISSING.value
+        attendance.menit_telat = 0
+        attendance.menit_pulang_cepat = 0
+        attendance.durasi_kerja = None
+
+    def _apply_present(
+        self, attendance: AttendanceModel, settings: AppSettingsModel
+    ) -> None:
+        """Calculate lateness/early-leave/duration for a normal work day."""
         work_end = self.resolve_work_end(
             attendance.tanggal, settings.work_end, settings.friday_end
         )
@@ -64,17 +150,19 @@ class AttendanceService:
         menit_pulang_cepat, status_keluar = self.calculate_early_leave(
             attendance.jam_keluar, work_end, settings.tolerance_leave
         )
-        durasi_kerja = self.calculate_work_duration(
-            attendance.jam_masuk, attendance.jam_keluar
-        )
 
         attendance.status_masuk = status_masuk.value
         attendance.status_keluar = status_keluar.value
         attendance.menit_telat = menit_telat
         attendance.menit_pulang_cepat = menit_pulang_cepat
-        attendance.durasi_kerja = durasi_kerja
-
-        return self.attendance_repo.update(attendance)
+        attendance.durasi_kerja = self.calculate_work_duration(
+            attendance.jam_masuk, attendance.jam_keluar
+        )
+        attendance.status_hari = (
+            AttendanceStatus.INCOMPLETE.value
+            if attendance.jam_masuk is None or attendance.jam_keluar is None
+            else AttendanceStatus.PRESENT.value
+        )
 
     def calculate_late(
         self, check_in: time | None, work_start: time, tolerance_minutes: int
@@ -150,6 +238,18 @@ class AttendanceService:
         if tanggal.weekday() == FRIDAY_WEEKDAY_INDEX:
             return friday_end
         return work_end
+
+    def _is_libur(self, tanggal: date, holiday_dates: set[date]) -> bool:
+        """Check whether a date is a weekend or a declared holiday."""
+        return tanggal.weekday() in WEEKEND_WEEKDAY_INDEXES or tanggal in holiday_dates
+
+    def _get_holiday_dates(self, records: list[AttendanceModel]) -> set[date]:
+        """Fetch declared holidays covering the date range of these records."""
+        if self.holiday_repo is None or not records:
+            return set()
+        dates = [r.tanggal for r in records]
+        holidays = self.holiday_repo.get_by_period(min(dates), max(dates))
+        return {h.tanggal for h in holidays}
 
     def _get_or_create_settings(self) -> AppSettingsModel:
         """Fetch the settings row, creating a default one if none exists."""

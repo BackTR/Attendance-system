@@ -49,6 +49,7 @@ def init_db() -> None:
     from models.employee import EmployeeModel  # noqa: F401
     from models.attendance import AttendanceModel  # noqa: F401
     from models.app_settings import AppSettingsModel  # noqa: F401
+    from models.holiday import HolidayModel
 
     Base.metadata.create_all(engine)
 

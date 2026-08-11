@@ -2,6 +2,11 @@
 
 Per AI_RULES.md Rule 3 ("Repository tidak boleh... export excel, export
 pdf"), all report generation logic lives here, never in Repository or UI.
+
+Every row includes a human-readable "Keterangan" column built from
+status_hari + status_masuk/status_keluar, so reports don't require
+manually cross-referencing raw status codes to tell late/early-leave
+apart from absent/holiday/overtime days.
 """
 
 from datetime import date
@@ -20,9 +25,19 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from core.enums.attendance import AttendanceStatus, CheckInStatus, CheckOutStatus
 from core.logger import logger
+from models.attendance import AttendanceModel
 from repositories.attendance_repository import AttendanceRepository
 from repositories.employee_repository import EmployeeRepository
+
+_STATUS_HARI_LABELS: dict[str, str] = {
+    AttendanceStatus.PRESENT.value: "Hadir",
+    AttendanceStatus.ABSENT.value: "Tidak Hadir",
+    AttendanceStatus.INCOMPLETE.value: "Hadir (Tidak Lengkap)",
+    AttendanceStatus.LIBUR.value: "Libur",
+    AttendanceStatus.LEMBUR.value: "Lembur",
+}
 
 
 class ReportService:
@@ -134,6 +149,9 @@ class ReportService:
                     "Nama": employee.nama if employee else "-",
                     "Tanggal": record.tanggal.strftime("%Y-%m-%d"),
                     "Hari": record.hari,
+                    "Status Hari": _STATUS_HARI_LABELS.get(
+                        record.status_hari, record.status_hari or "-"
+                    ),
                     "Jam Masuk": (
                         record.jam_masuk.strftime("%H:%M")
                         if record.jam_masuk
@@ -144,8 +162,7 @@ class ReportService:
                         if record.jam_keluar
                         else "-"
                     ),
-                    "Status Masuk": record.status_masuk or "-",
-                    "Status Keluar": record.status_keluar or "-",
+                    "Keterangan": self._build_keterangan(record),
                     "Menit Telat": record.menit_telat,
                     "Menit Pulang Cepat": record.menit_pulang_cepat,
                     "Durasi Kerja (menit)": (
@@ -154,3 +171,30 @@ class ReportService:
                 }
             )
         return rows
+
+    def _build_keterangan(self, record: AttendanceModel) -> str:
+        """Build one human-readable summary string for a record.
+
+        This is the column meant to answer "is this row a problem?" at a
+        glance, without cross-referencing status_masuk/status_keluar/
+        status_hari separately.
+        """
+        if record.status_hari == AttendanceStatus.LIBUR.value:
+            return "Libur"
+        if record.status_hari == AttendanceStatus.LEMBUR.value:
+            return "Lembur (masuk saat libur)"
+        if record.status_hari == AttendanceStatus.ABSENT.value:
+            return "Tidak Hadir"
+
+        details: list[str] = []
+        if record.status_masuk == CheckInStatus.LATE.value:
+            details.append(f"Telat {record.menit_telat} menit")
+        elif record.status_masuk == CheckInStatus.MISSING.value:
+            details.append("Tidak absen masuk")
+
+        if record.status_keluar == CheckOutStatus.EARLY.value:
+            details.append(f"Pulang cepat {record.menit_pulang_cepat} menit")
+        elif record.status_keluar == CheckOutStatus.MISSING.value:
+            details.append("Tidak absen pulang")
+
+        return ", ".join(details) if details else "Tepat waktu"
