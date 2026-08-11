@@ -5,7 +5,7 @@ and layout. It never queries the database directly — it only calls
 DashboardService, which uses Repositories under the hood.
 """
 
-from datetime import date, timedelta
+from datetime import timedelta
 
 import plotly.express as px
 import streamlit as st
@@ -45,7 +45,10 @@ metric_col2.metric("Tidak Hadir", summary.total_tidak_hadir)
 metric_col3.metric("Terlambat", summary.total_telat)
 metric_col4.metric("Pulang Cepat", summary.total_pulang_cepat)
 
-st.metric("Rata-rata Durasi Kerja (menit)", round(summary.rata_rata_durasi_menit, 1))
+metric_col5, metric_col6, metric_col7 = st.columns(3)
+metric_col5.metric("Libur", summary.total_libur)
+metric_col6.metric("Lembur", summary.total_lembur)
+metric_col7.metric("Rata-rata Durasi (menit)", round(summary.rata_rata_durasi_menit, 1))
 
 st.divider()
 
@@ -59,13 +62,14 @@ if recap:
             "Terlambat": r.total_telat,
             "Pulang Cepat": r.total_pulang_cepat,
             "Tidak Hadir": r.total_tidak_hadir,
+            "Lembur": r.total_lembur,
         }
         for r in recap
     ]
     fig = px.bar(
         chart_data,
         x="Nama",
-        y=["Terlambat", "Pulang Cepat", "Tidak Hadir"],
+        y=["Terlambat", "Pulang Cepat", "Tidak Hadir", "Lembur"],
         barmode="group",
         title="Rekap Absensi per Pegawai",
     )
