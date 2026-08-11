@@ -4,7 +4,7 @@ UI RULE (AI_RULES.md Rule 2 / 15): this page only does input, output,
 and layout. All Excel/PDF generation logic lives in ReportService.
 """
 
-from datetime import date, timedelta
+from datetime import timedelta
 
 import streamlit as st
 
@@ -17,7 +17,6 @@ from utils.datetime_helper import today
 st.set_page_config(page_title="Laporan - AIS", layout="wide")
 st.title("🧾 Laporan Absensi")
 
-# --- Input: date range (UI only) ---
 col1, col2 = st.columns(2)
 with col1:
     start_date = st.date_input(
@@ -31,7 +30,24 @@ if start_date > end_date:
     st.stop()
 
 st.divider()
-st.write("Pilih format laporan yang ingin diunduh:")
+
+report_mode = st.radio(
+    "Jenis Laporan",
+    options=["detail", "rekap"],
+    format_func=lambda v: (
+        "Detail Harian (1 baris per tanggal per pegawai)"
+        if v == "detail"
+        else "Rekap per Pegawai (1 baris per pegawai, tanggal bermasalah dirangkum)"
+    ),
+)
+
+if report_mode == "rekap":
+    st.caption(
+        "Cocok untuk cek cepat: siapa yang telat/pulang cepat/tidak hadir, "
+        "dan tanggal berapa saja -- tanpa perlu scroll semua tanggal."
+    )
+
+st.write("Pilih format file yang ingin diunduh:")
 
 export_col1, export_col2 = st.columns(2)
 
@@ -42,11 +58,16 @@ with export_col1:
             service = ReportService(
                 AttendanceRepository(session), EmployeeRepository(session)
             )
-            excel_bytes = service.export_to_excel(start_date, end_date)
+            if report_mode == "detail":
+                excel_bytes = service.export_to_excel(start_date, end_date)
+                file_label = "laporan_absensi"
+            else:
+                excel_bytes = service.export_recap_to_excel(start_date, end_date)
+                file_label = "rekap_absensi"
         st.download_button(
             label="⬇️ Download Excel",
             data=excel_bytes,
-            file_name=f"laporan_absensi_{start_date}_{end_date}.xlsx",
+            file_name=f"{file_label}_{start_date}_{end_date}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True,
         )
@@ -58,11 +79,16 @@ with export_col2:
             service = ReportService(
                 AttendanceRepository(session), EmployeeRepository(session)
             )
-            pdf_bytes = service.export_to_pdf(start_date, end_date)
+            if report_mode == "detail":
+                pdf_bytes = service.export_to_pdf(start_date, end_date)
+                file_label = "laporan_absensi"
+            else:
+                pdf_bytes = service.export_recap_to_pdf(start_date, end_date)
+                file_label = "rekap_absensi"
         st.download_button(
             label="⬇️ Download PDF",
             data=pdf_bytes,
-            file_name=f"laporan_absensi_{start_date}_{end_date}.pdf",
+            file_name=f"{file_label}_{start_date}_{end_date}.pdf",
             mime="application/pdf",
             use_container_width=True,
         )
