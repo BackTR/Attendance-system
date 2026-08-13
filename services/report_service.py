@@ -54,11 +54,15 @@ class EmployeeRecapDetail:
     total_tidak_hadir: int = 0
     total_telat: int = 0
     total_pulang_cepat: int = 0
+    total_lupa_masuk: int = 0
+    total_lupa_pulang: int = 0
     total_libur: int = 0
     total_lembur: int = 0
     tanggal_tidak_hadir: list[str] = field(default_factory=list)
     tanggal_telat: list[str] = field(default_factory=list)
     tanggal_pulang_cepat: list[str] = field(default_factory=list)
+    tanggal_lupa_masuk: list[str] = field(default_factory=list)
+    tanggal_lupa_pulang: list[str] = field(default_factory=list)
 
 class ReportService:
     """Generates Excel and PDF attendance reports for a given period."""
@@ -179,8 +183,8 @@ class ReportService:
             worksheet = writer.sheets["Rekap Pegawai"]
             # Widen the date-list columns so they're readable without
             # manually resizing every time the file is opened.
-            for col_letter in ("I", "J", "K"):
-                worksheet.column_dimensions[col_letter].width = 40
+            for col_letter in ("K", "L", "M", "N", "O"):
+                worksheet.column_dimensions[col_letter].width = 35
         buffer.seek(0)
 
         logger.info(f"Recap Excel generated: {len(rows)} pegawai")
@@ -199,7 +203,14 @@ class ReportService:
         recaps = self._build_employee_recaps(start_date, end_date)
 
         buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=landscape(A4))
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=landscape(A4),
+            leftMargin=1 * cm,
+            rightMargin=1 * cm,
+            topMargin=1.5 * cm,
+            bottomMargin=1.5 * cm,
+        )
         styles = getSampleStyleSheet()
         cell_style = styles["Normal"]
         cell_style.fontSize = 7
@@ -220,11 +231,15 @@ class ReportService:
                 "Tdk Hadir",
                 "Telat",
                 "Plg Cepat",
+                "Lupa Masuk",
+                "Lupa Pulang",
                 "Libur",
                 "Lembur",
                 "Tanggal Tidak Hadir",
                 "Tanggal Telat",
                 "Tanggal Pulang Cepat",
+                "Tanggal Lupa Absen Masuk",
+                "Tanggal Lupa Absen Pulang",
             ]
             table_data = [headers]
             for r in recaps:
@@ -236,6 +251,8 @@ class ReportService:
                         str(r.total_tidak_hadir),
                         str(r.total_telat),
                         str(r.total_pulang_cepat),
+                        str(r.total_lupa_masuk),
+                        str(r.total_lupa_pulang),
                         str(r.total_libur),
                         str(r.total_lembur),
                         Paragraph(", ".join(r.tanggal_tidak_hadir) or "-", cell_style),
@@ -243,6 +260,8 @@ class ReportService:
                         Paragraph(
                             ", ".join(r.tanggal_pulang_cepat) or "-", cell_style
                         ),
+                        Paragraph(", ".join(r.tanggal_lupa_masuk) or "-", cell_style),
+                        Paragraph(", ".join(r.tanggal_lupa_pulang) or "-", cell_style),
                     ]
                 )
 
@@ -250,8 +269,9 @@ class ReportService:
                 table_data,
                 repeatRows=1,
                 colWidths=[
-                    1.6 * cm, 3.2 * cm, 1.4 * cm, 1.6 * cm, 1.4 * cm, 1.6 * cm,
-                    1.4 * cm, 1.6 * cm, 4.5 * cm, 4.5 * cm, 4.5 * cm,
+                    1.3 * cm, 2.6 * cm, 1.0 * cm, 1.1 * cm, 1.0 * cm, 1.1 * cm,
+                    1.1 * cm, 1.1 * cm, 1.0 * cm, 1.0 * cm,
+                    3.0 * cm, 3.0 * cm, 3.0 * cm, 3.0 * cm, 3.0 * cm,
                 ],
             )
             table.setStyle(
@@ -322,6 +342,17 @@ class ReportService:
         else:
             recap.total_hadir += 1
 
+        # "Lupa absen" = only ONE of check-in/check-out is missing (the
+        # employee clearly attended, so this is different from ABSENT,
+        # which means both are missing / no attendance data at all).
+        if record.status_hari == AttendanceStatus.INCOMPLETE.value:
+            if record.status_masuk == CheckInStatus.MISSING.value:
+                recap.total_lupa_masuk += 1
+                recap.tanggal_lupa_masuk.append(tanggal_str)
+            if record.status_keluar == CheckOutStatus.MISSING.value:
+                recap.total_lupa_pulang += 1
+                recap.tanggal_lupa_pulang.append(tanggal_str)
+
         if record.status_masuk == CheckInStatus.LATE.value:
             recap.total_telat += 1
             recap.tanggal_telat.append(f"{tanggal_str} ({record.menit_telat}mnt)")
@@ -341,11 +372,15 @@ class ReportService:
             "Tidak Hadir": recap.total_tidak_hadir,
             "Telat": recap.total_telat,
             "Pulang Cepat": recap.total_pulang_cepat,
+            "Lupa Absen Masuk": recap.total_lupa_masuk,
+            "Lupa Absen Pulang": recap.total_lupa_pulang,
             "Libur": recap.total_libur,
             "Lembur": recap.total_lembur,
             "Tanggal Tidak Hadir": ", ".join(recap.tanggal_tidak_hadir) or "-",
             "Tanggal Telat": ", ".join(recap.tanggal_telat) or "-",
             "Tanggal Pulang Cepat": ", ".join(recap.tanggal_pulang_cepat) or "-",
+            "Tanggal Lupa Absen Masuk": ", ".join(recap.tanggal_lupa_masuk) or "-",
+            "Tanggal Lupa Absen Pulang": ", ".join(recap.tanggal_lupa_pulang) or "-",
         }
 
     def _build_rows(self, start_date: date, end_date: date) -> list[dict]:
