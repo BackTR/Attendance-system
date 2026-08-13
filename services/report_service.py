@@ -15,8 +15,9 @@ from io import BytesIO
 
 import pandas as pd
 from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4, landscape
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import (
     Paragraph,
@@ -181,11 +182,11 @@ class ReportService:
         with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
             df.to_excel(writer, index=False, sheet_name="Rekap Pegawai")
             worksheet = writer.sheets["Rekap Pegawai"]
+            worksheet.column_dimensions["A"].width = 28  # Nama
             # Widen the date-list columns so they're readable without
             # manually resizing every time the file is opened.
-            for col_letter in ("K", "L", "M", "N", "O"):
+            for col_letter in ("J", "K", "L", "M", "N"):
                 worksheet.column_dimensions[col_letter].width = 35
-        buffer.seek(0)
 
         logger.info(f"Recap Excel generated: {len(rows)} pegawai")
         return buffer.getvalue()
@@ -214,6 +215,14 @@ class ReportService:
         styles = getSampleStyleSheet()
         cell_style = styles["Normal"]
         cell_style.fontSize = 7
+        header_style = ParagraphStyle(
+            "recap_header",
+            parent=styles["Normal"],
+            fontSize=7,
+            leading=8,
+            textColor=colors.white,
+            alignment=TA_CENTER,
+        )
 
         elements = [
             Paragraph(
@@ -224,8 +233,7 @@ class ReportService:
         ]
 
         if recaps:
-            headers = [
-                "Kode",
+            header_labels = [
                 "Nama",
                 "Hadir",
                 "Tdk Hadir",
@@ -241,12 +249,16 @@ class ReportService:
                 "Tanggal Lupa Absen Masuk",
                 "Tanggal Lupa Absen Pulang",
             ]
+            # Headers use Paragraph (not plain strings) so long labels like
+            # "Tanggal Tidak Hadir" wrap onto multiple lines within their
+            # column instead of overflowing into neighboring cells.
+            headers = [Paragraph(label, header_style) for label in header_labels]
+
             table_data = [headers]
             for r in recaps:
                 table_data.append(
                     [
-                        r.employee_code,
-                        r.nama,
+                        Paragraph(r.nama, cell_style),
                         str(r.total_hadir),
                         str(r.total_tidak_hadir),
                         str(r.total_telat),
@@ -269,17 +281,17 @@ class ReportService:
                 table_data,
                 repeatRows=1,
                 colWidths=[
-                    1.3 * cm, 2.6 * cm, 1.0 * cm, 1.1 * cm, 1.0 * cm, 1.1 * cm,
-                    1.1 * cm, 1.1 * cm, 1.0 * cm, 1.0 * cm,
-                    3.0 * cm, 3.0 * cm, 3.0 * cm, 3.0 * cm, 3.0 * cm,
+                    3.4 * cm, 1.1 * cm, 1.3 * cm, 1.1 * cm, 1.3 * cm,
+                    1.3 * cm, 1.3 * cm, 1.1 * cm, 1.1 * cm,
+                    2.9 * cm, 2.9 * cm, 2.9 * cm, 2.9 * cm, 2.9 * cm,
                 ],
             )
             table.setStyle(
                 TableStyle(
                     [
                         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2C3E50")),
-                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                        ("FONTSIZE", (0, 0), (-1, 0), 7),
+                        ("FONTSIZE", (1, 1), (8, -1), 7),
+                        ("ALIGN", (1, 1), (8, -1), "CENTER"),
                         ("VALIGN", (0, 0), (-1, -1), "TOP"),
                         ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
                         (
@@ -366,7 +378,6 @@ class ReportService:
     def _recap_to_row(self, recap: EmployeeRecapDetail) -> dict:
         """Flatten an EmployeeRecapDetail into a spreadsheet row."""
         return {
-            "Kode Pegawai": recap.employee_code,
             "Nama": recap.nama,
             "Hadir": recap.total_hadir,
             "Tidak Hadir": recap.total_tidak_hadir,
