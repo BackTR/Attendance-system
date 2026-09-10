@@ -49,6 +49,11 @@ class AttendanceModel(Base):
         nullable=True
     )
 
+    status_hari: Mapped[str] = mapped_column(
+        String(30),
+        nullable=True
+    )
+
     menit_telat: Mapped[int] = mapped_column(
         Integer,
         default=0
